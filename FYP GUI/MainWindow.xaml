@@ -1,0 +1,24 @@
+﻿<Window x:Class="FYP_GUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FYP_GUI"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+
+            <Button Content="Forward" Margin="5" Padding="10" FontSize="14" Click="movementButtons"/>
+            <Button Content="Backward" Margin="5" Padding="10" FontSize="14" Click="movementButtons"/>
+            <Button Content="Left" Margin="5" Padding="10" FontSize="14"/>
+            <Button Content="Right" Margin="5" Padding="10" FontSize="14"/>
+            <Button Content="STOP" Margin="5" Padding="10" FontSize="16" FontWeight="Bold" Background="DarkRed" Foreground="White"/>
+
+            <Label Content="Speed Control" Margin="5,20,5,0" HorizontalAlignment="Center"/>
+
+            <Slider Minimum="0" Maximum="100" Width="250" Margin="5"/>
+
+        </StackPanel>
+    </Grid>
+</Window>
