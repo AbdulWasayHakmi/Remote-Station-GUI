@@ -1,16 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 namespace FYP_GUI
@@ -25,14 +16,26 @@ namespace FYP_GUI
             InitializeComponent();
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        // Joystick event handler stubs - implement logic yourself
+        private void JoystickCanvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-
+            // TODO: handle joystick press
         }
 
-        private void Button_Click_1(object sender, RoutedEventArgs e)
+        private void JoystickCanvas_MouseMove(object sender, MouseEventArgs e)
         {
-
+            // TODO: handle joystick move
         }
+
+        private void JoystickCanvas_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            // TODO: handle joystick release
+        }
+
+        private void JoystickCanvas_MouseLeave(object sender, MouseEventArgs e)
+        {
+            // TODO: handle joystick leave
+        }
+
     }
 }
