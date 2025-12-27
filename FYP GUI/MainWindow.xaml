@@ -7,140 +7,137 @@
         mc:Ignorable="d"
         Title="Firefighting Robot Teleop" Height="600" Width="1000"
         Background="#FF1E1E2F" WindowStartupLocation="CenterScreen">
-    <Grid>
-        <!-- Sidebar for Controls -->
-        <Border Background="#FF23233A" Width="220" HorizontalAlignment="Left" CornerRadius="0,10,10,0">
-            <StackPanel Margin="20">
-                <TextBlock Text="Controls" FontSize="22" Foreground="White" FontWeight="Bold" Margin="0,10,0,20"/>
-
-                <!-- Joystick Control -->
-                <TextBlock Text="Joystick Control" FontSize="14" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
-                <Border Background="#FF2D2D44" Width="180" Height="180" CornerRadius="10" Margin="0,0,0,15">
-                    <Canvas x:Name="JoystickCanvas" Background="#FF1E1E2F" MouseMove="JoystickCanvas_MouseMove" MouseLeftButtonDown="JoystickCanvas_MouseDown" MouseLeftButtonUp="JoystickCanvas_MouseUp" MouseLeave="JoystickCanvas_MouseLeave">
-                        <!-- Background circle -->
-                        <Ellipse Canvas.Left="25" Canvas.Top="25" Width="130" Height="130" Fill="Transparent" Stroke="#FF666677" StrokeThickness="2"/>
-                        <!-- Joystick knob -->
-                        <Ellipse x:Name="JoystickKnob" Canvas.Left="80" Canvas.Top="80" Width="20" Height="20" Fill="#FFD7263D" />
-                    </Canvas>
-                </Border>
-
-                <Separator Margin="0,15,0,15"/>
-
-                <!-- Action Buttons -->
-                <TextBlock Text="Actions" FontSize="14" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
-                <Button Content="Activate Water Pump" Height="35" Margin="0,0,0,10" Background="#FF1E88E5" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
-                <Button Content="Emergency Stop" Height="35" Background="#FFD7263D" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
-
-                <Separator Margin="0,15,0,15"/>
-
-                <!-- Serial / UART Connection -->
-                <TextBlock Text="Serial Connection" FontSize="14" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
-                <StackPanel>
-                    <ComboBox x:Name="PortComboBox" Width="140" Height="30" IsEditable="True" Margin="0,0,0,8">
-                        <ComboBoxItem>COM1</ComboBoxItem>
-                        <ComboBoxItem>COM2</ComboBoxItem>
-                        <ComboBoxItem>COM3</ComboBoxItem>
-                    </ComboBox>
-                    <ComboBox x:Name="BaudComboBox" Width="140" Height="30" Margin="0,0,0,8">
-                        <ComboBoxItem>9600</ComboBoxItem>
-                        <ComboBoxItem>19200</ComboBoxItem>
-                        <ComboBoxItem>38400</ComboBoxItem>
-                        <ComboBoxItem>57600</ComboBoxItem>
-                        <ComboBoxItem>115200</ComboBoxItem>
-                    </ComboBox>
-                    <ComboBox x:Name="ParityComboBox" Width="140" Height="30" Margin="0,0,0,8">
-                        <ComboBoxItem>None</ComboBoxItem>
-                        <ComboBoxItem>Odd</ComboBoxItem>
-                        <ComboBoxItem>Even</ComboBoxItem>
-                    </ComboBox>
-
-                    <DockPanel LastChildFill="False" Margin="0,4,0,0">
-                        <ToggleButton x:Name="ConnectButton" Content="Connect" Width="100" Height="30" DockPanel.Dock="Left" Margin="0,0,8,0" Background="#FF1E88E5" Foreground="White" FontWeight="Bold"/>
-                        <Button x:Name="RefreshPortsButton" Content="Refresh" Width="60" Height="30" Background="#FF4E5566" Foreground="White"/>
-                    </DockPanel>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0">
-                        <Ellipse x:Name="ConnectionIndicator" Width="12" Height="12" Fill="#FF6B6B6B" Margin="0,0,8,0"/>
-                        <TextBlock x:Name="ConnectionStatusText" Text="Disconnected" Foreground="#FFB0BEC5" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <!-- Main Content Area -->
-        <Grid Margin="240,20,20,20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="2*"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0,0,-317,-168">
+        <Grid Margin="10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Odometry Display -->
-            <Border Grid.Row="0" Grid.Column="0" Margin="0,0,20,20" Background="#FF2D2D44" CornerRadius="10">
-                <StackPanel Margin="20">
-                    <TextBlock Text="Odometry - Robot Position &amp; Movement" FontSize="18" Foreground="White" FontWeight="Bold" Margin="0,0,0,15"/>
-                    <Border Background="#FF1E1E2F" CornerRadius="8">
-                        <Canvas x:Name="OdometryCanvas" Background="#FF1E1E2F" Width="400" Height="300">
-                            <!-- Grid background -->
-                            <Rectangle Canvas.Left="0" Canvas.Top="0" Width="400" Height="300" Fill="#FF1E1E2F" Stroke="#FF666677" StrokeThickness="1"/>
-                            <!-- Origin point -->
-                            <Ellipse Canvas.Left="195" Canvas.Top="145" Width="10" Height="10" Fill="#FF1E88E5" StrokeThickness="0"/>
-                            <!-- Robot position indicator -->
-                            <Polygon x:Name="RobotIndicator" Points="0,0 15,-10 20,0 15,10" Fill="#FFD7263D" Canvas.Left="195" Canvas.Top="145"/>
-                            <!-- Movement trail -->
-                            <Polyline x:Name="MovementTrail" Stroke="#FF666677" StrokeThickness="1" Canvas.Left="0" Canvas.Top="0"/>
-                        </Canvas>
+            <!-- Sidebar for Controls -->
+            <Border Grid.Column="0" Background="#FF23233A" HorizontalAlignment="Left" CornerRadius="0,10,10,0" MinWidth="180" MaxWidth="320" Padding="10">
+                <StackPanel>
+                    <TextBlock Text="Controls" FontSize="22" Foreground="White" FontWeight="Bold" Margin="10"/>
+
+                    <!-- Joystick Control (scales) -->
+                    <TextBlock Text="Joystick Control" FontSize="14" Foreground="White" FontWeight="Bold" Margin="10,0,10,8"/>
+                    <Border Background="#FF2D2D44" CornerRadius="10" Padding="8" Margin="10,0,10,10">
+                        <Viewbox Stretch="Uniform">
+                            <Canvas x:Name="JoystickCanvas" Width="180" Height="180" Background="#FF1E1E2F" MouseMove="JoystickCanvas_MouseMove" MouseLeftButtonDown="JoystickCanvas_MouseDown" MouseLeftButtonUp="JoystickCanvas_MouseUp" MouseLeave="JoystickCanvas_MouseLeave">
+                                <!-- Background circle -->
+                                <Ellipse Canvas.Left="25" Canvas.Top="25" Width="130" Height="130" Fill="Transparent" Stroke="#FF666677" StrokeThickness="2"/>
+                                <!-- Joystick knob -->
+                                <Ellipse x:Name="JoystickKnob" Canvas.Left="80" Canvas.Top="80" Width="20" Height="20" Fill="#FFD7263D" />
+                            </Canvas>
+                        </Viewbox>
                     </Border>
-                </StackPanel>
-            </Border>
 
-            <!-- Sensor Readings -->
-            <Border Grid.Row="0" Grid.Column="1" Margin="0,0,0,20" Background="#FF2D2D44" CornerRadius="10">
-                <StackPanel Margin="20">
-                    <TextBlock Text="Sensor Readings" FontSize="18" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBlock Text="Temperature:" Foreground="White" Width="110"/>
-                        <TextBlock x:Name="TemperatureValue" Text="-- &#176;C" Foreground="#FFD7263D" FontWeight="Bold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBlock Text="Smoke Level:" Foreground="White" Width="110"/>
-                        <TextBlock x:Name="SmokeLevelValue" Text="--" Foreground="#FFD7263D" FontWeight="Bold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBlock Text="Flame Detected:" Foreground="White" Width="110"/>
-                        <TextBlock x:Name="FlameDetectedValue" Text="--" Foreground="#FFD7263D" FontWeight="Bold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBlock Text="Battery:" Foreground="White" Width="110"/>
-                        <TextBlock x:Name="BatteryValue" Text="-- %" Foreground="#FFD7263D" FontWeight="Bold"/>
-                    </StackPanel>
-                    <Separator Margin="0,15,0,15"/>
-                    <TextBlock Text="Position Data" FontSize="12" Foreground="White" FontWeight="Bold" Margin="0,0,0,5"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,3">
-                        <TextBlock Text="X:" Foreground="White" Width="40"/>
-                        <TextBlock x:Name="PositionXValue" Text="0.00 m" Foreground="#FF4FC3F7" FontWeight="Bold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,3">
-                        <TextBlock Text="Y:" Foreground="White" Width="40"/>
-                        <TextBlock x:Name="PositionYValue" Text="0.00 m" Foreground="#FF4FC3F7" FontWeight="Bold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,3">
-                        <TextBlock Text="&#952;:" Foreground="White" Width="40"/>
-                        <TextBlock x:Name="PositionThetaValue" Text="0.00&#176;" Foreground="#FF4FC3F7" FontWeight="Bold"/>
+                    <Separator Margin="10,4"/>
+
+                    <!-- Action Buttons -->
+                    <TextBlock Text="Actions" FontSize="14" Foreground="White" FontWeight="Bold" Margin="10,6,10,6"/>
+                    <Button x:Name="startButton" Content="Start" Height="36" Margin="10,0,10,8" Background="#FF1E88E5" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
+                    <Button x:Name="stopButton" Content="Stop" Height="36" Margin="10,0,10,8" Background="#FFD7263D" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
+
+                    <Separator Margin="10,12"/>
+
+                    <!-- Serial / UART Connection -->
+                    <TextBlock Text="Serial Connection" FontSize="14" Foreground="White" FontWeight="Bold" Margin="10,6,10,6"/>
+                    <StackPanel Margin="10,0,10,0">
+                        <ComboBox x:Name="PortComboBox" Height="30" IsEditable="True" Margin="0,0,0,8" />
+                        <ComboBox x:Name="BaudComboBox" Height="30" Margin="0,0,0,8"/>
+                        <ComboBox x:Name="ParityComboBox" Height="30" Margin="0,0,0,8"/>
+
+                        <DockPanel LastChildFill="False" Margin="0,4,0,0">
+                            <ToggleButton x:Name="ConnectButton" Content="Connect" Width="100" Height="30" DockPanel.Dock="Left" Margin="0,0,8,0" Background="#FF1E88E5" Foreground="White" FontWeight="Bold"/>
+                            <Button x:Name="RefreshPortsButton" Content="Refresh" Width="60" Height="30" Background="#FF4E5566" Foreground="White"/>
+                        </DockPanel>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,8,0,0">
+                            <Ellipse x:Name="ConnectionIndicator" Width="12" Height="12" Fill="#FF6B6B6B" Margin="0,0,8,0"/>
+                            <TextBlock x:Name="ConnectionStatusText" Text="Disconnected" Foreground="#FFB0BEC5" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- Logs or Status Area -->
-            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Background="#FF23233A" CornerRadius="10">
-                <StackPanel Margin="20">
-                    <TextBlock Text="Status / Logs" FontSize="16" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
-                    <ListBox x:Name="StatusLogBox" Height="80" Background="#FF1E1E2F" Foreground="#FF4FC3F7" Margin="0,0,0,0"/>
-                </StackPanel>
-            </Border>
+            <!-- Main Content Area -->
+            <Grid Grid.Column="1" Margin="20,0,10,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Odometry Display (scales with available space) -->
+                <Border Grid.Row="0" Grid.Column="0" Margin="0,0,20,20" Background="#FF2D2D44" CornerRadius="10">
+                    <StackPanel Margin="12">
+                        <TextBlock Text="Odometry - Robot Position &amp; Movement" FontSize="18" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <Border Background="#FF1E1E2F" CornerRadius="8" Padding="8">
+                            <Viewbox Stretch="Uniform">
+                                <Canvas x:Name="OdometryCanvas" Width="400" Height="300" Background="#FF1E1E2F">
+                                    <!-- Grid background -->
+                                    <Rectangle Canvas.Left="0" Canvas.Top="0" Width="400" Height="300" Fill="#FF1E1E2F" Stroke="#FF666677" StrokeThickness="1"/>
+                                    <!-- Origin point -->
+                                    <Ellipse Canvas.Left="195" Canvas.Top="145" Width="10" Height="10" Fill="#FF1E88E5" StrokeThickness="0"/>
+                                    <!-- Robot position indicator -->
+                                    <Polygon x:Name="RobotIndicator" Points="0,0 15,-10 20,0 15,10" Fill="#FFD7263D" Canvas.Left="195" Canvas.Top="145"/>
+                                    <!-- Movement trail -->
+                                    <Polyline x:Name="MovementTrail" Stroke="#FF666677" StrokeThickness="1" Canvas.Left="0" Canvas.Top="0"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Sensor Readings -->
+                <Border Grid.Row="0" Grid.Column="1" Margin="0,0,0,20" Background="#FF2D2D44" CornerRadius="10">
+                    <StackPanel Margin="12">
+                        <TextBlock Text="Sensor Readings" FontSize="18" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="Temperature:" Foreground="White" Width="110"/>
+                            <TextBlock x:Name="TemperatureValue" Text="-- &#176;C" Foreground="#FFD7263D" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="Smoke Level:" Foreground="White" Width="110"/>
+                            <TextBlock x:Name="SmokeLevelValue" Text="--" Foreground="#FFD7263D" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="Flame Detected:" Foreground="White" Width="110"/>
+                            <TextBlock x:Name="FlameDetectedValue" Text="--" Foreground="#FFD7263D" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="Battery:" Foreground="White" Width="110"/>
+                            <TextBlock x:Name="BatteryValue" Text="-- %" Foreground="#FFD7263D" FontWeight="Bold"/>
+                        </StackPanel>
+                        <Separator Margin="0,15,0,15"/>
+                        <TextBlock Text="Position Data" FontSize="12" Foreground="White" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,3">
+                            <TextBlock Text="X:" Foreground="White" Width="40"/>
+                            <TextBlock x:Name="PositionXValue" Text="0.00 m" Foreground="#FF4FC3F7" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,3">
+                            <TextBlock Text="Y:" Foreground="White" Width="40"/>
+                            <TextBlock x:Name="PositionYValue" Text="0.00 m" Foreground="#FF4FC3F7" FontWeight="Bold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,3">
+                            <TextBlock Text="&#952;:" Foreground="White" Width="40"/>
+                            <TextBlock x:Name="PositionThetaValue" Text="0.00&#176;" Foreground="#FF4FC3F7" FontWeight="Bold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Logs or Status Area -->
+                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Background="#FF23233A" CornerRadius="10">
+                    <StackPanel Margin="12">
+                        <TextBlock Text="Status / Logs" FontSize="16" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <ListBox x:Name="StatusLogBox" Height="80" Background="#FF1E1E2F" Foreground="#FF4FC3F7" Margin="0,0,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </Window>
