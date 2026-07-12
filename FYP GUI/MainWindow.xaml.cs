@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO.Ports;
 using System.Linq;
 using System.Windows;
@@ -9,33 +9,41 @@ using System.Windows.Shapes;
 
 namespace FYP_GUI
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        // Joystick state
         private bool isJoystickActive = false;
         private Point joystickCenter = new Point(90, 90);
-        private const double joystickRadius = 65; // matches UI circle radius
+        private const double joystickRadius = 65;
+        float max_wheel_velocity = 70000.00f;
 
-        // Serial
         private SerialPort serialPort;
+
+        private const byte TAG_NRF_CMD = 0xAA; 
+        private const byte TAG_NRF_FB = 0xCC;  
+        private const byte TAG_LORA_TELEM = 0xBB; 
+        private const byte TAG_LORA_STOP = 0xE0; 
+        private const byte TAG_LORA_RECAL = 0xE1;  
+        private const byte TAG_LORA_INIT = 0xE2; 
+
+        // Init ACK state
+        private bool _waitingForInitAck = false;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            // Wire up serial UI events
             RefreshPortsButton.Click += RefreshPortsButton_Click;
             ConnectButton.Checked += ConnectButton_Checked;
             ConnectButton.Unchecked += ConnectButton_Unchecked;
             startButton.Click += startButtonClick;
 
-            // Compute joystick center after loaded (in case sizes change)
+            // Supervisory buttons
+            EmergencyStopButton.Click += EmergencyStopButton_Click;
+            RecalibrateButton.Click += RecalibrateButton_Click;
+            ReadInitButton.Click += ReadInitButton_Click;
+
             Loaded += MainWindow_Loaded;
 
-            // Initial population of ports and baud
             PopulateBaudRates();
             RefreshSerialPorts();
         }
@@ -45,7 +53,6 @@ namespace FYP_GUI
             if (JoystickCanvas != null)
             {
                 joystickCenter = new Point(JoystickCanvas.ActualWidth / 2.0, JoystickCanvas.ActualHeight / 2.0);
-                // center knob visually
                 JoystickKnob.SetValue(Canvas.LeftProperty, joystickCenter.X - (JoystickKnob.Width / 2.0));
                 JoystickKnob.SetValue(Canvas.TopProperty, joystickCenter.Y - (JoystickKnob.Height / 2.0));
             }
@@ -83,7 +90,6 @@ namespace FYP_GUI
 
         private void UpdateJoystickPosition(Point position)
         {
-            // vector from center
             double dx = position.X - joystickCenter.X;
             double dy = position.Y - joystickCenter.Y;
             double distance = Math.Sqrt(dx * dx + dy * dy);
@@ -95,24 +101,21 @@ namespace FYP_GUI
                 dy = Math.Sin(angle) * joystickRadius;
             }
 
-            // move knob
             double knobLeft = joystickCenter.X + dx - (JoystickKnob.Width / 2.0);
             double knobTop = joystickCenter.Y + dy - (JoystickKnob.Height / 2.0);
             JoystickKnob.SetValue(Canvas.LeftProperty, knobLeft);
             JoystickKnob.SetValue(Canvas.TopProperty, knobTop);
 
-            // normalized output (-1..1)
+            // Normalised -1..1, Y inverted for natural forward
             double normalizedX = dx / joystickRadius;
-            double normalizedY = -dy / joystickRadius; // invert Y for natural forward
+            double normalizedY = -dy / joystickRadius;
 
             LogStatus($"Joystick: X={normalizedX:F2}, Y={normalizedY:F2}");
-
             SendJoystickCommand(normalizedX, normalizedY);
         }
 
         private void ResetJoystickPosition()
         {
-            // return knob to center
             double knobLeft = joystickCenter.X - (JoystickKnob.Width / 2.0);
             double knobTop = joystickCenter.Y - (JoystickKnob.Height / 2.0);
             JoystickKnob.SetValue(Canvas.LeftProperty, knobLeft);
@@ -123,7 +126,7 @@ namespace FYP_GUI
         }
         #endregion
 
-        #region Serial / UART
+        #region Serial
         private void PopulateBaudRates()
         {
             if (BaudComboBox != null)
@@ -167,9 +170,10 @@ namespace FYP_GUI
 
         private void ConnectButton_Checked(object sender, RoutedEventArgs e)
         {
-            // Attempt to open serial port
-            var portName = (PortComboBox.SelectedItem as string) ?? (PortComboBox.SelectedItem is ComboBoxItem cbi ? cbi.Content.ToString() : null);
-            if (string.IsNullOrWhiteSpace(portName) && PortComboBox.Text != null) portName = PortComboBox.Text.Trim();
+            var portName = (PortComboBox.SelectedItem as string)
+                        ?? (PortComboBox.SelectedItem is ComboBoxItem cbi ? cbi.Content.ToString() : null);
+            if (string.IsNullOrWhiteSpace(portName) && PortComboBox.Text != null)
+                portName = PortComboBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(portName))
             {
                 LogStatus("No port selected");
@@ -178,10 +182,16 @@ namespace FYP_GUI
             }
 
             int baud = 115200;
-            try { baud = int.Parse((BaudComboBox.SelectedItem as string) ?? (BaudComboBox.SelectedItem is ComboBoxItem bci ? bci.Content.ToString() : BaudComboBox.Text)); }
+            try
+            {
+                baud = int.Parse(
+                    (BaudComboBox.SelectedItem as string)
+                    ?? (BaudComboBox.SelectedItem is ComboBoxItem bci ? bci.Content.ToString() : BaudComboBox.Text));
+            }
             catch { }
 
-            var parityStr = (ParityComboBox.SelectedItem as string) ?? (ParityComboBox.SelectedItem is ComboBoxItem pci ? pci.Content.ToString() : "None");
+            var parityStr = (ParityComboBox.SelectedItem as string)
+                         ?? (ParityComboBox.SelectedItem is ComboBoxItem pci ? pci.Content.ToString() : "None");
             Parity parity = Parity.None;
             if (parityStr != null)
             {
@@ -230,51 +240,52 @@ namespace FYP_GUI
         {
             Dispatcher.Invoke(() =>
             {
-                ConnectionIndicator.Fill = connected ? new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)) : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
+                ConnectionIndicator.Fill = connected
+                    ? new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50))
+                    : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
                 ConnectionStatusText.Text = status;
             });
         }
+        #endregion
+
+        #region RX Packet Parser
+        private byte[] _rxBuf = new byte[256];
+        private int _rxCount = 0;
+
+        private const int SIZE_NRF_FB = 6;   // 0xCC
+        private const int SIZE_LORA_TELEM = 9;  // 0xBB
 
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             try
             {
                 var sp = (SerialPort)sender;
-                string line = sp.ReadLine();
-                // Basic parsing: push to log and try to update sensor/odometry if formatted
-                Dispatcher.Invoke(() => LogStatus($"RX: {line.Trim()}"));
+                int available = sp.BytesToRead;
+                if (available <= 0) return;
 
-                // Example parsing (customize to your STM32 protocol):
-                // SENSOR:TEMP,SMOKE,FLAME,BATT
-                // ODOM:X,Y,THETA
-                var parts = line.Trim().Split(':');
-                if (parts.Length >= 2)
+                byte[] incoming = new byte[available];
+                sp.Read(incoming, 0, available);
+
+                foreach (byte b in incoming)
                 {
-                    var tag = parts[0].ToUpperInvariant();
-                    var payload = parts[1];
-                    if (tag == "SENSOR")
+                    if (_rxCount == 0)
                     {
-                        var vals = payload.Split(',');
-                        if (vals.Length >= 4)
-                        {
-                            if (double.TryParse(vals[0], out double temp) && int.TryParse(vals[3], out int batt))
-                            {
-                                var smoke = vals[1];
-                                var flame = vals[2] == "1" || vals[2].Equals("yes", StringComparison.OrdinalIgnoreCase);
-                                Dispatcher.Invoke(() => UpdateSensorReadings(temp, smoke, flame, batt));
-                            }
-                        }
+                        if (b != TAG_NRF_FB && b != TAG_LORA_TELEM)
+                            continue;
                     }
-                    else if (tag == "ODOM")
+
+                    _rxBuf[_rxCount++] = b;
+
+                    int expected = _rxBuf[0] == TAG_NRF_FB ? SIZE_NRF_FB : SIZE_LORA_TELEM;
+
+                    if (_rxCount == expected)
                     {
-                        var vals = payload.Split(',');
-                        if (vals.Length >= 3)
-                        {
-                            if (double.TryParse(vals[0], out double ox) && double.TryParse(vals[1], out double oy) && double.TryParse(vals[2], out double th))
-                            {
-                                Dispatcher.Invoke(() => UpdateOdometry(ox, oy, th));
-                            }
-                        }
+                        byte tag = _rxBuf[0];
+                        byte[] frame = new byte[expected];
+                        Array.Copy(_rxBuf, frame, expected);
+                        _rxCount = 0;
+
+                        Dispatcher.Invoke(() => ParsePacket(tag, frame));
                     }
                 }
             }
@@ -284,91 +295,59 @@ namespace FYP_GUI
             }
         }
 
+        private void ParsePacket(byte tag, byte[] frame)
+        {
+            switch (tag)
+            {
+                case TAG_NRF_FB:
+                    {
+                        short deltaL = BitConverter.ToInt16(frame, 1);
+                        short deltaR = BitConverter.ToInt16(frame, 3);
+                        byte status = frame[5];
+
+                        UpdateNrfFeedback(deltaL, deltaR, status);
+                        LogStatus($"RX nRF FB: dL={deltaL} dR={deltaR} status=0x{status:X2}");
+
+                        // Decode status register bits
+                        if ((status & 0x80) != 0) LogStatus("  >> STALL: Left motor");
+                        if ((status & 0x40) != 0) LogStatus("  >> STALL: Right motor");
+                        if ((status & 0x20) != 0) LogStatus("  >> FAULT: Encoder");
+                        if ((status & 0x10) != 0) LogStatus("  >> Recalibration requested");
+                        break;
+                    }
+
+                case TAG_LORA_TELEM:
+                    {
+                        float odomX = BitConverter.ToSingle(frame, 1);
+                        float odomY = BitConverter.ToSingle(frame, 5);
+
+                        if (_waitingForInitAck)
+                        {
+                            _waitingForInitAck = false;
+                            LogStatus("Init ACK received.");
+                        }
+
+                        UpdateOdometry(odomX, odomY, 0);
+                        LogStatus($"RX LoRa Telem: odomX={odomX:F2} odomY={odomY:F2}");
+                        break;
+                    }
+            }
+        }
+        #endregion
+
+        #region TX Packets
         private void SendJoystickCommand(double x, double y)
         {
-            // Format command for your STM32 + nRF link. Keep simple: J:x,y\n
-            string cmd = $"J:{x:F2},{y:F2}\n";
-            try
-            {
-                if (serialPort != null && serialPort.IsOpen)
-                {
-                    serialPort.WriteLine(cmd);
-                    LogStatus($"TX: {cmd.Trim()}");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogStatus($"Serial TX error: {ex.Message}");
-            }
-        }
-        #endregion
+            float velL = (float)((y + x) * max_wheel_velocity);
+            float velR = (float)((y - x) * max_wheel_velocity);
 
-        #region UI helpers
-        private void LogStatus(string text)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                if (StatusLogBox != null)
-                {
-                    StatusLogBox.Items.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {text}");
-                    while (StatusLogBox.Items.Count > 50) StatusLogBox.Items.RemoveAt(StatusLogBox.Items.Count - 1);
-                }
-            });
-        }
-        #endregion
+            velL = Math.Max(-max_wheel_velocity, Math.Min(max_wheel_velocity, velL));
+            velR = Math.Max(-max_wheel_velocity, Math.Min(max_wheel_velocity, velR));
 
-        #region Public update methods
-        // Call from your code when new sensor data arrives
-        public void UpdateSensorReadings(double temperature, string smokeLevel, bool flameDetected, int battery)
-        {
-            TemperatureValue.Text = $"{temperature:F1} �C";
-            SmokeLevelValue.Text = smokeLevel ?? "--";
-            FlameDetectedValue.Text = flameDetected ? "Yes" : "No";
-            BatteryValue.Text = $"{battery}%";
+            SendCmdPacket(TAG_NRF_CMD, velL, velR);
         }
 
-        // Call from your code when odometry updates arrive
-        public void UpdateOdometry(double x, double y, double theta)
-        {
-            PositionXValue.Text = $"{x:F2} m";
-            PositionYValue.Text = $"{y:F2} m";
-            PositionThetaValue.Text = $"{theta:F2}�";
-
-            // Map to canvas coordinates (centered at 200,150 as in XAML)
-            double canvasX = 200 + (x * 20);
-            double canvasY = 150 - (y * 20);
-
-            // Move robot indicator and add to trail
-            RobotIndicator.SetValue(Canvas.LeftProperty, canvasX - 10);
-            RobotIndicator.SetValue(Canvas.TopProperty, canvasY - 10);
-
-            RobotIndicator.RenderTransform = new RotateTransform(theta, 10, 10);
-
-            if (MovementTrail != null)
-            {
-                if (MovementTrail.Points.Count == 0 ||
-                    Math.Abs(MovementTrail.Points[MovementTrail.Points.Count - 1].X - canvasX) > 2 ||
-                    Math.Abs(MovementTrail.Points[MovementTrail.Points.Count - 1].Y - canvasY) > 2)
-                {
-                    MovementTrail.Points.Add(new Point(canvasX, canvasY));
-                    // limit trail length
-                    if (MovementTrail.Points.Count > 500) MovementTrail.Points.RemoveAt(0);
-                }
-            }
-        }
-
-        private void startButtonClick(object sender, RoutedEventArgs e)
-        {
-            float testdata = 5000.0f;
-            byte tag = 0xed;
-            
-            sendBinaryPacket(tag, testdata);
-
-            // Placeholder for start button action
-            LogStatus("Start button clicked");
-        }
-
-        private void sendBinaryPacket(byte tag, float data)
+        private void SendCmdPacket(byte tag, float velL, float velR)
         {
             if (serialPort == null || !serialPort.IsOpen)
             {
@@ -378,21 +357,131 @@ namespace FYP_GUI
 
             try
             {
-                byte[] floatData = BitConverter.GetBytes(data);
-                byte[] packet = new byte[5];
-
+                byte[] packet = new byte[9];
                 packet[0] = tag;
-                packet[1] = floatData[0];
-                packet[2] = floatData[1];
-                packet[3] = floatData[2];
-                packet[4] = floatData[3];
+                Array.Copy(BitConverter.GetBytes(velL), 0, packet, 1, 4);
+                Array.Copy(BitConverter.GetBytes(velR), 0, packet, 5, 4);
 
                 serialPort.Write(packet, 0, packet.Length);
+                LogStatus($"TX nRF CMD: tag=0x{tag:X2} velL={velL:F0} velR={velR:F0}");
             }
             catch (Exception ex)
             {
-                LogStatus("Error sending binary: " + ex.Message);
+                LogStatus($"Error sending CMD packet: {ex.Message}");
             }
+        }
+        private void SendLoraCommand(byte tag)
+        {
+            if (serialPort == null || !serialPort.IsOpen)
+            {
+                LogStatus("Error: Serial port not open.");
+                return;
+            }
+
+            try
+            {
+                serialPort.Write(new byte[] { tag }, 0, 1);
+                LogStatus($"TX LoRa CMD: tag=0x{tag:X2}");
+            }
+            catch (Exception ex)
+            {
+                LogStatus($"Error sending LoRa command: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Supervisory Button Handlers
+        private void EmergencyStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendCmdPacket(TAG_NRF_CMD, 0f, 0f);
+            SendLoraCommand(TAG_LORA_STOP);
+            LogStatus("EMERGENCY STOP sent.");
+        }
+
+        private void RecalibrateButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendLoraCommand(TAG_LORA_RECAL);
+            LogStatus("Recalibrate command sent.");
+        }
+
+        private void ReadInitButton_Click(object sender, RoutedEventArgs e)
+        {
+            _waitingForInitAck = true;
+            SendLoraCommand(TAG_LORA_INIT);
+            LogStatus("Read Init sent — waiting for ACK...");
+        }
+        #endregion
+
+        #region UI Helpers
+        private void LogStatus(string text)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (StatusLogBox != null)
+                {
+                    StatusLogBox.Items.Insert(0, $"[{DateTime.Now:HH:mm:ss}] {text}");
+                    while (StatusLogBox.Items.Count > 50)
+                        StatusLogBox.Items.RemoveAt(StatusLogBox.Items.Count - 1);
+                }
+            });
+        }
+        #endregion
+
+        #region Public Update Methods
+        public void UpdateOdometry(double x, double y, double theta)
+        {
+            PositionXValue.Text = $"{x:F2} m";
+            PositionYValue.Text = $"{y:F2} m";
+            PositionThetaValue.Text = $"{theta:F2}°";
+
+            double canvasX = 200 + (x * 20);
+            double canvasY = 150 - (y * 20);
+
+            RobotIndicator.SetValue(Canvas.LeftProperty, canvasX - 10);
+            RobotIndicator.SetValue(Canvas.TopProperty, canvasY - 10);
+            RobotIndicator.RenderTransform = new RotateTransform(theta, 10, 10);
+
+            if (MovementTrail != null)
+            {
+                if (MovementTrail.Points.Count == 0 ||
+                    Math.Abs(MovementTrail.Points[MovementTrail.Points.Count - 1].X - canvasX) > 2 ||
+                    Math.Abs(MovementTrail.Points[MovementTrail.Points.Count - 1].Y - canvasY) > 2)
+                {
+                    MovementTrail.Points.Add(new Point(canvasX, canvasY));
+                    if (MovementTrail.Points.Count > 500)
+                        MovementTrail.Points.RemoveAt(0);
+                }
+            }
+        }
+
+        public void UpdateNrfFeedback(short deltaL, short deltaR, byte status)
+        {
+            NrfDeltaLValue.Text = deltaL.ToString();
+            NrfDeltaRValue.Text = deltaR.ToString();
+
+            bool stallL = (status & 0x80) != 0;
+            bool stallR = (status & 0x40) != 0;
+            bool encFault = (status & 0x20) != 0;
+            bool recalib = (status & 0x10) != 0;
+
+            StallLeftIndicator.Fill = stallL
+                ? new SolidColorBrush(Colors.Red)
+                : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
+            StallRightIndicator.Fill = stallR
+                ? new SolidColorBrush(Colors.Red)
+                : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
+            EncoderFaultIndicator.Fill = encFault
+                ? new SolidColorBrush(Colors.Orange)
+                : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
+            RecalibIndicator.Fill = recalib
+                ? new SolidColorBrush(Colors.Yellow)
+                : new SolidColorBrush(Color.FromRgb(0x6B, 0x6B, 0x6B));
+        }
+
+        private void startButtonClick(object sender, RoutedEventArgs e)
+        {
+            SendCmdPacket(TAG_NRF_CMD, 50.0f, 50.0f);
+            LogStatus("Start clicked — test packet sent: L=50 R=50");
         }
         #endregion
     }
